@@ -3,166 +3,100 @@
 import streamlit as st
 from calculations import *
 from pdf_export import generate_pdf
-from verification import *
 
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "otp_sent" not in st.session_state:
-    st.session_state.otp_sent = False
-if "otp_value" not in st.session_state:
-    st.session_state.otp_value = None
-if "selected_user" not in st.session_state:
-    st.session_state.selected_user = None
+st.title("🏠 Property Rate Calculator")
 
-# if not st.session_state.authenticated:
-#     st.title("🔒 Login with OTP")
+# --------------------------
+# Optional Address
+# --------------------------
+def parse_amount(value: str) -> int:
+    if not value:
+        return 0
+    return int(value.replace(",", ""))
 
-#     user = st.selectbox("Select your name", list(USERS.keys()))
 
-#     # STEP 1: Send OTP
-#     if st.button("Send OTP"):
-#         email = USERS[user]
-#         otp = generate_otp()  # generated ONCE
-#         st.session_state.otp_value = otp
-#         st.session_state.selected_user = user
+def currency_input(label, key, placeholder=""):
+    def format_commas():
+        raw = st.session_state[key]
 
-#         if send_otp(email, otp):
-#             st.success(f"OTP sent to {email}")
-#             st.session_state.otp_sent = True
-#         else:
-#             st.error("Failed to send OTP")
+        # Allow empty
+        if not raw:
+            return
 
-#     # STEP 2: Verify OTP (NO regeneration here)
-#     if st.session_state.otp_sent:
-#         user_otp = st.text_input(
-#             "Enter the OTP received in email",
-#             type="password",
-#             key="otp_input"
-#         )
+        # Remove commas
+        raw_no_commas = raw.replace(",", "")
 
-#         if st.button("Verify OTP"):
-#             if user_otp.strip() == st.session_state.otp_value:
-#                 st.success(f"✅ Welcome {st.session_state.selected_user}!")
-#                 st.session_state.authenticated = True
+        # ❌ Reject non-numeric input
+        if not raw_no_commas.isdigit():
+            st.warning("Only numbers are allowed")
+            st.session_state[key] = ""
+            return
 
-#                 # cleanup
-#                 st.session_state.otp_sent = False
-#                 st.session_state.otp_value = None
+        # ✅ Apply comma formatting
+        st.session_state[key] = f"{int(raw_no_commas):,}"
 
-#                 st.rerun()
-#             else:
-#                 st.error("❌ Incorrect OTP. Try again.")
+    # Ensure session_state key exists
+    if key not in st.session_state:
+        st.session_state[key] = ""
 
-if not st.session_state.authenticated:
-
-    # st.markdown(
-    #     """
-    #     <style>
-    #     .login-card {
-    #         max-width: 420px;
-    #         margin: auto;
-    #         padding: 30px;
-    #         border-radius: 14px;
-    #         background-color: #ffffff;
-    #         box-shadow: 0px 10px 30px rgba(0,0,0,0.08);
-    #     }
-    #     </style>
-    #     """,
-    #     unsafe_allow_html=True
-    # )
-
-    # st.markdown('<div class="login-card">', unsafe_allow_html=True)
-
-    st.markdown("### 🔐 Secure Login")
-    st.caption("This app is protected. Please verify your identity.")
-
-    st.markdown("---")
-
-    # USER SELECTION
-    user = st.selectbox(
-        "👤 Select your name",
-        list(USERS.keys()),
-        help="Choose your registered name"
+    st.text_input(
+        label,
+        key=key,
+        placeholder=placeholder,
+        on_change=format_commas
     )
 
-    # SEND OTP
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        if st.button("📨 Send OTP", use_container_width=True):
-            email = USERS[user]
-            otp = generate_otp()
-            st.session_state.otp_value = otp
-            st.session_state.selected_user = user
-
-            if send_otp(email, otp):
-                st.session_state.otp_sent = True
-                st.success(f"OTP sent to **{email}**")
-            else:
-                st.error("Failed to send OTP")
-
-    # OTP INPUT + VERIFY
-    if st.session_state.otp_sent:
-        st.markdown("#### 🔑 Enter OTP")
-
-        user_otp = st.text_input(
-            "6-digit code",
-            type="password",
-            placeholder="••••••",
-            key="otp_input"
-        )
-
-        if st.button("✅ Verify & Login", use_container_width=True):
-            if user_otp.strip() == st.session_state.otp_value:
-                st.success(f"Welcome **{st.session_state.selected_user}** 👋")
-                st.session_state.authenticated = True
-
-                # cleanup
-                st.session_state.otp_sent = False
-                st.session_state.otp_value = None
-
-                st.rerun()
-            else:
-                st.error("❌ Incorrect OTP. Please try again.")
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    return parse_amount(st.session_state.get(key, ""))
 
 
+property_details = st.text_area("Property Address (Optional)", height=80)
 
-if st.session_state.authenticated:
-    st.title("🏠 Property Rate Calculator")
+# --------------------------
+# Inputs (Compact Layout)
+# --------------------------
+st.subheader("Property Rates")
+is_value = st.radio(
+    "Calculation Mode",
+    ["Use Rates (per unit)", "Use Official Amount"],
+    horizontal=True
+)
 
-    # --------------------------
-    # Optional Address
-    # --------------------------
-    property_details = st.text_area("Property Address (Optional)", height=80)
-
-    # --------------------------
-    # Inputs (Compact Layout)
-    # --------------------------
-    st.subheader("Property Rates")
+if is_value == "Use Rates (per unit)":
     col1, col2, col3, col4 = st.columns(4)
-
     with col1:
         area = st.number_input("Area", min_value=0, step=1, format="%d")
     with col2:
-        dc_rate = st.number_input("DC Rate", min_value=0, step=1, format="%d")
+        dc_rate = currency_input("DC Rate","dc_rate", "e.g. 9,000")
     with col3:
-        fbr_rate = st.number_input("FBR Rate", min_value=0, step=1, format="%d")
+        fbr_rate = currency_input("FBR Rate","fbr_rate", "e.g. 9,000")
     with col4:
         rebate_percentage = st.number_input("Rebate %", min_value=0.0, max_value=100.0, step=0.1, format="%.1f")
+else:
+    official_value = currency_input("Official Value", "official_value", "e.g. 8,000,000")
 
-    is_town_tax = st.checkbox("Town Tax (Seller)")
-    is_seller_7E = st.checkbox("Seller 7E (Seller)")
-    is_services_charges = st.checkbox("Services Charges")
 
-    if is_services_charges:
-        services_charges = st.number_input("Services Charges", min_value=0, format="%d")
+is_town_tax = st.checkbox("Town Tax (Seller)")
+is_seller_7E = st.checkbox("Seller 7E (Seller)")
+is_services_charges = st.checkbox("Services Charges")
+
+if is_services_charges:
+    services_charges = currency_input("Services Charges","services_charges", "e.g. 25,000")
+# --------------------------
+# Calculate Button
+# --------------------------
+if st.button("Calculate", type="primary"):
+    st.markdown("---")
+
     # --------------------------
-    # Calculate Button
-    # --------------------------
-    if st.button("Calculate", type="primary"):
-        st.markdown("---")
-
+    # Calculate taxes for all categories
+    # -------------------------
+    if is_value == "Use Official Amount":
+        stamp_duty = calculate_stamp_duty(official_value)
+        seller_7e = calculate_seller_7e(official_value)
+        town_tax = calculate_town_tax(official_value) if is_town_tax else 0
+        advance_tax_all = calculate_advance_tax_all(official_value)  # returns [val, %, val, %, val, %]
+        gain_tax_all = calculate_gain_tax_all(official_value)        # same format
+    else:
         # --------------------------
         # Base calculations
         # --------------------------
@@ -174,20 +108,52 @@ if st.session_state.authenticated:
         stamp_duty = calculate_stamp_duty(dc_value)
         seller_7e = calculate_seller_7e(final_fbr_value)
         town_tax = calculate_town_tax(dc_value) if is_town_tax else 0
-
-        # --------------------------
-        # Calculate taxes for all categories
-        # --------------------------
         advance_tax_all = calculate_advance_tax_all(final_fbr_value)  # returns [val, %, val, %, val, %]
         gain_tax_all = calculate_gain_tax_all(final_fbr_value)        # same format
 
-        # --------------------------
-        # Prepare 3 pages for PDF
-        # --------------------------
-        pages_data = []
-        categories = ["Filer", "Non-Filer", "Late Filer"]
 
-        for i, category in enumerate(categories):
+    # --------------------------
+    # Prepare 3 pages for PDF
+    # --------------------------
+    pages_data = []
+    categories = ["Filer", "Non-Filer", "Late Filer"]
+
+    for i, category in enumerate(categories):
+        if is_value == "Use Official Amount":
+            page = {
+            "Category": category,
+            "Property Address": property_details,
+            "Official Amount": f"Rs.{official_value:,}/-"
+            }
+        # Buyer section
+            page["__BUYER_SECTION__"] = ""
+            page["Advance Tax (Buyer)"] = f"Rs.{round(advance_tax_all[i*2]):,}/- ({advance_tax_all[i*2+1]}%)"
+            page["Stamp Duty (Buyer)"] = f"Rs.{round(stamp_duty):,}/- (2%)"
+            page["Scanning Fee (Buyer)"] = "Rs.1,300/-"
+            buyer_total = round(stamp_duty + advance_tax_all[i*2] + 1300)
+            page["Buyer Total"] = f"Rs.{buyer_total:,}/-"
+
+            # Seller section
+            page["__SELLER_SECTION__"] = ""
+            page["Gain Tax (Seller)"] = f"Rs.{round(gain_tax_all[i*2]):,}/- ({gain_tax_all[i*2+1]}%)"
+            
+            if is_seller_7E:
+                page["7E (Seller)"] = f"Rs.{round(seller_7e):,}/- (1%)"
+
+            if is_town_tax:
+                page["Town Tax (Seller)"] = f"Rs.{round(town_tax):,}/- (1%)"
+
+            seller_7e_value = seller_7e if is_seller_7E else 0
+            seller_total = round(gain_tax_all[i*2] + seller_7e_value + town_tax)
+            page["Seller Total"] = f"Rs.{seller_total:,}/-"
+            if is_services_charges:
+                page["Services Charges"] = f"Rs.{round(services_charges):,}/-"
+                page["Total Amount (incl. Services Charges)"] = f"Rs.{seller_total + buyer_total + services_charges:,}/-"
+            else:
+                page["Total Amount"] = f"Rs.{seller_total + buyer_total:,}/-"
+            pages_data.append(page)
+    
+        else:
             page = {
                 "Category": category,
                 "Property Address": property_details,
@@ -223,7 +189,8 @@ if st.session_state.authenticated:
             if is_town_tax:
                 page["Town Tax (Seller)"] = f"Rs.{round(town_tax):,}/- (1%)"
 
-            seller_total = round(gain_tax_all[i*2] + seller_7e + town_tax)
+            seller_7e_value = seller_7e if is_seller_7E else 0
+            seller_total = round(gain_tax_all[i*2] + seller_7e_value + town_tax)
             page["Seller Total"] = f"Rs.{seller_total:,}/-"
             if is_services_charges:
                 page["Services Charges"] = f"Rs.{round(services_charges):,}/-"
@@ -232,14 +199,14 @@ if st.session_state.authenticated:
                 page["Total Amount"] = f"Rs.{seller_total + buyer_total:,}/-"
             pages_data.append(page)
 
-        # --------------------------
-        # Generate PDF
-        # --------------------------
-        pdf_file = generate_pdf(pages_data)
+    # --------------------------
+    # Generate PDF
+    # --------------------------
+    pdf_file = generate_pdf(pages_data)
 
-        st.download_button(
-            "📄 Download PDF",
-            pdf_file,
-            file_name="property_rate_calculation.pdf",
-            mime="application/pdf",
-        )
+    st.download_button(
+        "📄 Download PDF",
+        pdf_file,
+        file_name="property_rate_calculation.pdf",
+        mime="application/pdf",
+    )

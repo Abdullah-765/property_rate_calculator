@@ -85,13 +85,12 @@ def calculate_gain_tax_all(value):
         calculate_gain_tax_late_filer_percentage
     ]
 
-def calculate_stamp_duty(dc_value):
-    return STAMP_DUTY_PERCENTAGE * dc_value
-
+def calculate_stamp_duty(value):
+    return STAMP_DUTY_PERCENTAGE * value
 
 def calculate_seller_7e(value):
     return SELLER_7E_PERCENTAGE * value
 
 
-def calculate_town_tax(dc_value):
-    return (1 / 100) * dc_value
+def calculate_town_tax(value):
+    return (1 / 100) * value
