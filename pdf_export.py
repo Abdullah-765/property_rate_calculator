@@ -38,7 +38,7 @@ def generate_pdf(pages: list) -> BytesIO:
         # ===========================
         # MAIN HEADING
         # ===========================
-        c.setFont("Times-Bold", 22)
+        c.setFont("Helvetica-Bold", 22)
         c.drawCentredString(PAGE_WIDTH / 2, y, "TRANSFER EXPENSE SHEET")
         y -= 8
         c.line(PAGE_WIDTH / 4, y, PAGE_WIDTH * 3 / 4, y)
@@ -49,7 +49,7 @@ def generate_pdf(pages: list) -> BytesIO:
         # ===========================
         category = page_data.get("Category")
         if category:
-            c.setFont("Times-Bold", 16)
+            c.setFont("Helvetica-Bold", 16)
             c.drawCentredString(PAGE_WIDTH / 2, y, category.upper())
             y -= 25
 
@@ -58,7 +58,7 @@ def generate_pdf(pages: list) -> BytesIO:
         # ===========================
         address = page_data.get("Property Address")
         if address:
-            c.setFont("Times-Bold", 16)
+            c.setFont("Helvetica-Bold", 16)
             for line in textwrap.wrap(address, width=50):
                 c.drawCentredString(PAGE_WIDTH / 2, y, line)
                 y -= LINE_HEIGHT
@@ -79,7 +79,7 @@ def generate_pdf(pages: list) -> BytesIO:
             # -----------------------
             if label == "__BUYER_SECTION__":
                 y -= SECTION_BREAK_GAP
-                c.setFont("Times-Bold", 16)
+                c.setFont("Helvetica-Bold", 16)
                 c.drawCentredString(PAGE_WIDTH / 2, y, "BUYER EXPENSES")
                 y -= 5
                 c.line(LEFT_MARGIN, y, PAGE_WIDTH - RIGHT_MARGIN, y)
@@ -91,9 +91,9 @@ def generate_pdf(pages: list) -> BytesIO:
             # -----------------------
             if label == "__SELLER_SECTION__":
                 y -= SECTION_BREAK_GAP
-                c.setFont("Times-Bold", 16)
+                c.setFont("Helvetica-Bold", 16)
                 c.drawCentredString(PAGE_WIDTH / 2, y, "SELLER EXPENSES")
-                y -= 5
+                y -= 3
                 c.line(LEFT_MARGIN, y, PAGE_WIDTH - RIGHT_MARGIN, y)
                 y -= DATA_LINE_HEIGHT
                 continue
@@ -102,14 +102,14 @@ def generate_pdf(pages: list) -> BytesIO:
             # FONT LOGIC
             # -----------------------
             if "Total" in label:
-                c.setFont("Times-Bold", 14)
+                c.setFont("Helvetica-Bold", 14)
             else:
-                c.setFont("Times-Roman", 12)
+                c.setFont("Helvetica", 12)
 
             if "Services Charges" in label:
                 y -= SECTION_BREAK_GAP
-                c.setFont("Times-Bold", 14)
-                y -= 5
+                c.setFont("Helvetica-Bold", 14)
+                y -= 3
 
 
             text = f"{label}: {value}"
@@ -119,12 +119,12 @@ def generate_pdf(pages: list) -> BytesIO:
                 if y < 50:  # start new page if space runs out
                     c.showPage()
                     y = PAGE_HEIGHT - TOP_MARGIN
-                    c.setFont("Times-Roman", 12)
+                    c.setFont("Helvetica", 12)
 
                 c.drawString(LEFT_MARGIN, y, line)
                 y -= DATA_LINE_HEIGHT
 
-            y -= 6
+            y -= 4
 
         # ===========================
         # End of page
